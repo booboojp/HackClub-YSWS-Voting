@@ -1,0 +1,76 @@
+.testing-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 8px;
+    color: white;
+    max-width: 400px;
+    z-index: 1000;
+    font-family: 'Courier New', monospace;
+}
+
+.session-info {
+    margin: 10px 0;
+}
+
+.status {
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.authenticated {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.not-authenticated {
+    color: #f44336;
+    font-weight: bold;
+}
+
+.user-data, .session-details {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.user-data pre, .session-details pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.refresh-button {
+    background: #4A154B;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 12px;
+}
+
+.refresh-button:hover {
+    background: #611f63;
+}
+
+.loading, .error {
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.loading {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.error {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
