@@ -112,27 +112,6 @@ const Terminal = () => {
 
     return (
         <div className="terminal-container">
-            <div className="auth-controls">
-            {!isAuthenticated ? (
-                <button onClick={() => window.location.href = 'http://localhost:8080/auth/slack'}>
-                Login with Slack
-                </button>
-            ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {userData?.userImage && (
-                    <img
-                    src={userData.userImage}
-                    alt="profile"
-                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                    />
-                )}
-                <span className="user-info">
-                    {userData?.userName} - {userData?.userEmail}
-                </span>
-                <button onClick={handleLogout}>Logout</button>
-                </div>
-            )}
-            </div>
             <div ref={terminalRef} className="terminal-output">
                 {commands.map((cmd, idx) => (
                     <div key={idx} className="command-line">
