@@ -5,8 +5,8 @@ const path = require(`path`);
 const session = require(`express-session`);
 const FileStore = require(`session-file-store`)(session);
 
-require(`dotenv`).config({ 
-	path: path.resolve(__dirname, `../.env`) 
+require(`dotenv`).config({
+	path: path.resolve(__dirname, `../.env`)
 });
 
 const slackAuth = require(`./authentication/slack.js`);;
@@ -69,9 +69,10 @@ const commandExecutor = new CommandExecutor();
 app.get(`/auth/slack`, (req, res) => {
 	const currentSessionId = req.sessionID;
 	console.log(`Starting OAuth flow with session ID:`, currentSessionId);
-
+	console.log(`Session object:`, req.session);
+	
 	req.session.slackState = currentSessionId;
-    
+
 	req.session.save((err) => {
 		if (err) {
 			console.error(`Error saving session:`, err);
@@ -93,7 +94,7 @@ app.get(`/auth/slack`, (req, res) => {
 			`identity.email`
 		];
 
-		const slackAuthUrl = `https://slack.com/oauth/v2/authorize?` + 
+		const slackAuthUrl = `https://slack.com/oauth/v2/authorize?` +
             `client_id=${process.env.SLACK_CLIENT_ID}` +
             `&scope=${botScopes.join(`,`)}` +
             `&user_scope=${userScopes.join(`,`)}` +
@@ -117,22 +118,22 @@ app.get(`/auth/slack/callback`, async(req, res) => {
 
 		const sessionData = JSON.parse(fs.readFileSync(sessionPath));
 		if (!sessionData.slackState || sessionData.slackState !== state) {
-			console.error(`State mismatch:`, { 
-				expected: sessionData.slackState, 
-				received: state 
+			console.error(`State mismatch:`, {
+				expected: sessionData.slackState,
+				received: state
 			});
 			return res.status(403).json({ error: `State mismatch` });
 		}
 
 		const tokenData = await slackAuth.getAccessToken(code);
 		const validation = await slackAuth.validateAndStoreTokens(tokenData);
-        
+
 		if (validation.isValid) {
 			sessionData.auth = tokenData;
 			sessionData.__lastAccess = Date.now();
-            
+
 			fs.writeFileSync(sessionPath, JSON.stringify(sessionData));
-            
+
 			console.log(`Session updated successfully:`, {
 				sessionId: state,
 				hasAuth: true
@@ -178,11 +179,11 @@ app.post(`/api/slack/command`, async(req, res) => {
 	try {
 		const { command: cmdName, params } = parseCommand(command);
 		const result = await commandExecutor.execute(cmdName, params, req);
-        
+
 		if (result.redirect) {
 			return res.json({ redirect: result.redirect });
 		}
-        
+
 		res.json({ success: true, result: result.result });
 	} catch (error) {
 		res.status(400).json({
@@ -195,11 +196,11 @@ app.post(`/api/slack/command`, async(req, res) => {
 app.post(`/api/slack/events`, async(req, res) => {
 	// Slack events crap here, this is where we can expand more with Slack API!
 	const { type, challenge } = req.body;
-  
+
 	if (type === `url_verification`) {
 		return res.json({ challenge });
 	}
-  
+
 	res.json({ ok: true });
 });
 
