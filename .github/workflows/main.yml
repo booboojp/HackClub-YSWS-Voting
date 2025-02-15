@@ -44,8 +44,8 @@ jobs:
       - name: Build images
         run: |
           docker compose build
-          docker tag ysws-project-client ghcr.io/${{ github.repository_owner }}/ysws-project-client:latest
-          docker tag ysws-project-server ghcr.io/${{ github.repository_owner }}/ysws-project-server:latest
+          docker tag hackclub-ysws-voting-client ghcr.io/${{ github.repository_owner }}/ysws-project-client:latest
+          docker tag hackclub-ysws-voting-server ghcr.io/${{ github.repository_owner }}/ysws-project-server:latest
 
       - name: Log in to registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
