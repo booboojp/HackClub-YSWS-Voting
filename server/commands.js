@@ -1,4 +1,4 @@
-const { validateParams } = require('./server/utils/commandParser.js');  
+const { validateParams } = require('./utils/commandParser.js');
 class CommandExecutor {
     constructor() {
         this.commands = new Map();
@@ -71,14 +71,17 @@ class CommandExecutor {
         this.commands.set(name.toLowerCase(), { requiredParams, executor });
     }
 
-    async execute(command, params) {
-
-        const cmd = this.commands.get(command) || (() => { throw new Error(`Unknown command: ${command}`); })();
-
+    async execute(command, params, req) {
+        const cmd = this.commands.get(command) || (() => { 
+            throw new Error(`Unknown command: ${command}`); 
+        })();
+    
         const validation = validateParams(command, cmd.requiredParams, params);
-        (validation.valid) ? (true) : ((() => { throw new Error(validation.error); })());
-
-        return cmd.executor(command, ...params);
+        if (!validation.valid) {
+            throw new Error(validation.error);
+        }
+    
+        return cmd.executor(command, ...params, req);
     }
 }
 

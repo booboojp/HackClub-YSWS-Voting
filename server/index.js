@@ -6,12 +6,14 @@ const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 
 
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ 
+    path: path.resolve(__dirname, '../.env') 
+});
 
 
 const slackAuth = require('./authentication/slack.js');
 const authMiddleware = require('./middleware/auth');
-const CommandExecutor = require('../commands.js');
+const CommandExecutor = require('./commands.js');
 const { parseCommand } = require('./utils/commandParser.js');
 const verifySlackRequest = require('./middleware/slackVerification.js');
 
@@ -194,25 +196,21 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.use('/api/slack/*', verifySlackRequest);
-
 app.post('/api/slack/command', async (req, res) => {
     const { command } = req.body;
     try {
         const { command: cmdName, params } = parseCommand(command);
         const result = await commandExecutor.execute(cmdName, params, req);
-        console.log(`Executing command: ${cmdName} with params: ${params}`);
         
         if (result.redirect) {
-            res.json({ success: true, redirect: result.redirect });
-            return;
+            return res.json({ redirect: result.redirect });
         }
         
-        res.json({ success: true, result });
+        res.json({ success: true, result: result.result });
     } catch (error) {
         res.status(400).json({
             success: false,
-            error: error.message,
-            type: error.type || 'unknown'
+            error: error.message
         });
     }
 });
