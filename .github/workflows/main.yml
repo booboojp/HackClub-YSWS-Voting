@@ -1,0 +1,36 @@
+name: Docker Build & Publish
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+
+env:
+  IMAGE_NAME: ysws-project
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: |
+          docker-compose build
+          docker tag ysws-project_client ghcr.io/${{ github.repository_owner }}/ysws-project-client
+          docker tag ysws-project_server ghcr.io/${{ github.repository_owner }}/ysws-project-server
+
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push images
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/ysws-project-client
+          docker push ghcr.io/${{ github.repository_owner }}/ysws-project-server
