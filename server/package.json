@@ -5,6 +5,7 @@
   "scripts": {
     "start": "cls && node index.js",
     "lint": "cls && eslint .",
+	"lint:fix": "cls && eslint . --fix",
     "dev": "cls && nodemon index.js"
   },
   "proxy": "http://localhost:8080",
