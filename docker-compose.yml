@@ -14,7 +14,6 @@ services:
       - REACT_APP_API_URL=http://server:8080
     depends_on:
       - server
-  image: hackclub-ysws-voting-client
 
   server:
     build:
@@ -32,4 +31,3 @@ services:
       - SLACK_CLIENT_SECRET=${SLACK_CLIENT_SECRET}
       - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
       - SLACK_REDIRECT_URI=${SLACK_REDIRECT_URI}
-    image: hackclub-ysws-voting-server
