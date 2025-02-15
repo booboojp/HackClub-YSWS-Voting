@@ -11,7 +11,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const slackAuth = require('./authentication/slack.js');
 const authMiddleware = require('./middleware/auth');
-const CommandExecutor = require('./commands.js');
+const CommandExecutor = require('../commands.js');
 const { parseCommand } = require('./utils/commandParser.js');
 const verifySlackRequest = require('./middleware/slackVerification.js');
 
@@ -88,10 +88,8 @@ app.get('/auth/slack', (req, res) => {
     const currentSessionId = req.sessionID;
     console.log('Starting OAuth flow with session ID:', currentSessionId);
 
-    // Store the state in session
     req.session.slackState = currentSessionId;
     
-    // Force session save before redirect
     req.session.save((err) => {
         if (err) {
             console.error('Error saving session:', err);
@@ -197,12 +195,18 @@ app.post('/auth/logout', (req, res) => {
 
 app.use('/api/slack/*', verifySlackRequest);
 
-app.post('/api/slack/command', authMiddleware, async (req, res) => {
+app.post('/api/slack/command', async (req, res) => {
     const { command } = req.body;
     try {
         const { command: cmdName, params } = parseCommand(command);
-        const result = await commandExecutor.execute(cmdName, params);
+        const result = await commandExecutor.execute(cmdName, params, req);
         console.log(`Executing command: ${cmdName} with params: ${params}`);
+        
+        if (result.redirect) {
+            res.json({ success: true, redirect: result.redirect });
+            return;
+        }
+        
         res.json({ success: true, result });
     } catch (error) {
         res.status(400).json({

@@ -1,4 +1,4 @@
-const { validateParams } = require('./utils/commandParser.js');  
+const { validateParams } = require('./server/utils/commandParser.js');  
 class CommandExecutor {
     constructor() {
         this.commands = new Map();
@@ -23,6 +23,43 @@ class CommandExecutor {
             
             return { success: true, result: n1 + n2 };
         });
+        this.registerCommand('login', [], (_, req) => {
+            if (req.session?.auth) {
+                throw new Error('Already authenticated');
+            }
+            return {
+                success: true,
+                result: 'Redirecting to Slack login...',
+                redirect: 'http://localhost:8080/auth/slack'
+            };
+        });
+
+        this.registerCommand('logout', [], (_, req) => {
+            if (!req.session?.auth) {
+                throw new Error('Not authenticated');
+            }
+            req.session.destroy();
+            return {
+                success: true,
+                result: 'Successfully logged out'
+            };
+        });
+        this.registerCommand('status', [], (_, req) => {
+            if (!req.session) {
+                return {
+                    success: true,
+                    result: 'No active session'
+                };
+            }
+
+            return {
+                success: true,
+                result: req.session.auth ? 
+                    `Authenticated as ${req.session.auth.userName} (${req.session.auth.userId})\nTeam: ${req.session.auth.teamName}` :
+                    'Not authenticated'
+            };
+        });
+
 
         this.registerCommand('newcommand', ['param1', 'param2'], (_, param1, param2) => ({
             success: true,

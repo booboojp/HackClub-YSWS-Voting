@@ -66,7 +66,7 @@ const Terminal = () => {
             console.error('[Terminal.jsx] Logout failed:', error);
         }
     };
-      const handleKeyPress = async (e) => {
+    const handleKeyPress = async (e) => {
         if (e.key === 'Enter') {
             const command = input.trim();
             if (!command) return;
@@ -89,6 +89,12 @@ const Terminal = () => {
                 }
     
                 const data = await response.json();
+                
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                    return;
+                }
+    
                 setCommands(prev => [...prev, {
                     input: command,
                     output: data.result,

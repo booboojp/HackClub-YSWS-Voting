@@ -1,18 +1,20 @@
-name: Docker Build & Publish
+name: Docker Build and Push
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - v*
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 env:
-  IMAGE_NAME: ysws-project
+  SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+  SLACK_CLIENT_ID: ${{ secrets.SLACK_CLIENT_ID }}
+  SLACK_CLIENT_SECRET: ${{ secrets.SLACK_CLIENT_SECRET }}
+  SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+  SLACK_REDIRECT_URI: ${{ secrets.SLACK_REDIRECT_URI }}
 
 jobs:
-  push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -21,8 +23,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-
-      - name: Set up Docker Compose (Other Version?)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install Dependencies
+        run: |
+          npm install
+          
+      - name: Set up Docker Compose
         uses: hoverkraft-tech/compose-action@v2.0.1
 
       - name: Build images
@@ -38,3 +48,7 @@ jobs:
         run: |
           docker push ghcr.io/${{ github.repository_owner }}/ysws-project-client:latest
           docker push ghcr.io/${{ github.repository_owner }}/ysws-project-server:latest
+
+      - name: Clean up
+        if: always()
+        run: docker logout ghcr.io
