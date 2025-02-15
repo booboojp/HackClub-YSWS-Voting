@@ -28,7 +28,13 @@ jobs:
         with:
           node-version: '20'
           
-      - name: Install Dependencies
+      - name: Install Client Dependencies
+        working-directory: ./client
+        run: |
+          npm install
+          
+      - name: Install Server Dependencies
+        working-directory: ./server
         run: |
           npm install
           
