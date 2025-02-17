@@ -21,18 +21,18 @@ const Terminal = () => {
                     method: 'GET',
                     credentials: 'include',
                     headers: {
-                        'Accept': 'application/json',
+                        'Accept':'application/json',
                         'Content-Type': 'application/json',
                     }
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const data = await response.json();
                 console.log('Auth status response:', data);
-                
+
                 if (data.isAuthenticated) {
                     setIsAuthenticated(true);
                     setUserData(data.user);
@@ -70,31 +70,31 @@ const Terminal = () => {
         if (e.key === 'Enter') {
             const command = input.trim();
             if (!command) return;
-    
+
             setHistory(prev => [...prev, command]);
             setInput('');
-    
+
             try {
                 const response = await fetch('http://localhost:8080/api/slack/command', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json'
                     },
-                    credentials: 'include', 
+                    credentials: 'include',
                     body: JSON.stringify({ command })
                 });
-    
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-    
+
                 const data = await response.json();
-                
+
                 if (data.redirect) {
                     window.location.href = data.redirect;
                     return;
                 }
-    
+
                 setCommands(prev => [...prev, {
                     input: command,
                     output: data.result,
@@ -111,7 +111,7 @@ const Terminal = () => {
             }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            const prevCommand = history[history.length - 1]; 
+            const prevCommand = history[history.length - 1];
             if (prevCommand) setInput(prevCommand);
         }
     };

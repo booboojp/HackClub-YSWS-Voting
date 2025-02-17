@@ -9,9 +9,17 @@ require(`dotenv`).config({
 	path: path.resolve(__dirname, `../.env`)
 });
 
-const slackAuth = require(`./authentication/slack.js`);;
+const slackAuth = require(`./authentication/slack.js`);
+
 const CommandExecutor = require(`./commands.js`);
+const commandExecutor = new CommandExecutor();
+/**
+ * Yes I know I am lazy
+ */
+global.commandExecutor = commandExecutor;
+
 const { parseCommand } = require(`./utils/commandParser.js`);
+const pbClient = require(`./database/pocketbase`);
 const verifySlackRequest = require(`./middleware/slackVerification.js`);
 
 const app = express();
@@ -56,21 +64,32 @@ app.use(session({
 	}
 }));
 app.use((req, res, next) => {
-	console.log(`Session Debug:`, {
-		id: req.sessionID,
-		hasAuth: !!req.session?.auth,
-		cookie: req.session?.cookie
-	});
+	// This shit clutters up the console :()
+	// console.log(`Session Debug:`, {
+	// 	id: req.sessionID,
+	// 	hasAuth: !!req.session?.auth,
+	// 	cookie: req.session?.cookie
+	// });
 	next();
 });
 
-const commandExecutor = new CommandExecutor();
+app.post(`/api/command`, async(req, res) => {
+	try {
+		const { command } = req.body;
+		if (!command) return res.status(400).json({ error: `No command provided` });
 
+		const [cmdName, ...params] = command.split(` `);
+		const result = await commandExecutor.execute(cmdName, params, req);
+		res.json(result);
+	} catch (error) {
+		res.status(400).json({ error: error.message });
+	}
+});
 app.get(`/auth/slack`, (req, res) => {
 	const currentSessionId = req.sessionID;
 	console.log(`Starting OAuth flow with session ID:`, currentSessionId);
 	console.log(`Session object:`, req.session);
-	
+
 	req.session.slackState = currentSessionId;
 
 	req.session.save((err) => {
@@ -95,11 +114,11 @@ app.get(`/auth/slack`, (req, res) => {
 		];
 
 		const slackAuthUrl = `https://slack.com/oauth/v2/authorize?` +
-            `client_id=${process.env.SLACK_CLIENT_ID}` +
-            `&scope=${botScopes.join(`,`)}` +
-            `&user_scope=${userScopes.join(`,`)}` +
-            `&state=${currentSessionId}` +
-            `&redirect_uri=${encodeURIComponent(process.env.SLACK_REDIRECT_URI)}`;
+			`client_id=${process.env.SLACK_CLIENT_ID}` +
+			`&scope=${botScopes.join(`,`)}` +
+			`&user_scope=${userScopes.join(`,`)}` +
+			`&state=${currentSessionId}` +
+			`&redirect_uri=${encodeURIComponent(process.env.SLACK_REDIRECT_URI)}`;
 
 		res.redirect(slackAuthUrl);
 	});
@@ -227,4 +246,14 @@ const cleanupSessions = () => {
 	}
 };
 cleanupSessions();
-app.listen(8080, () => console.log(`Server running on port 8080`));
+async function startServer() {
+	try {
+		await pbClient.connect();
+		app.listen(8080, () => console.log(`Server running on port 8080`));
+	} catch (err) {
+		console.error(`Failed to start:`, err);
+		process.exit(1);
+	}
+}
+
+startServer();
