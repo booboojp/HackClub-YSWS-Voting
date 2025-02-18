@@ -7,7 +7,7 @@ import '@fontsource/source-code-pro';
 function App() {
   return (
     <div className="App">
-      <Testing />
+      {/*<Testing />*/}
       <Terminal />
     </div>
   );
