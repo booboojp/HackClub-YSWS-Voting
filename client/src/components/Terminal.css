@@ -1,81 +1,97 @@
 .terminal-container {
     height: 100vh;
-    background-color: #1a1a1a;
-    color: #fff;
-    padding: 20px;
+    background-color: #1a1b26;
+    color: #a9b1d6;
+    padding: 10px;
     box-sizing: border-box;
-    font-family: monospace;
+    font-family: 'Source Code Pro', 'Ubuntu Mono', monospace;
 }
 
 .terminal-output {
     height: calc(100% - 40px);
     overflow-y: auto;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
+    padding: 5px;
 }
 
 .command-line {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 .prompt {
-    color: #0f9d58;
+    color: #1793D1;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.prompt::before {
+    content: "[";
+    color: #9ece6a;
+}
+
+.prompt::after {
+    content: "]";
+    color: #9ece6a;
 }
 
 .command {
-    color: #fff;
-}
-
-.error {
-    color: #ff5252;
-    margin-left: 20px;
+    color: #B8C0E0;
 }
 
 .output {
+    color: #B8C0E0;
     margin-left: 20px;
     white-space: pre-wrap;
+    width: 100%;
+}
+
+.error {
+    color: #FF5555;
+    margin-left: 20px;
+    width: 100%;
 }
 
 .input-line {
     display: flex;
     align-items: center;
-    gap: 10px;
 }
 
 .input-line input {
     flex: 1;
     background-color: transparent;
     border: none;
-    color: #fff;
+    color: #a9b1d6;
     outline: none;
-    font-family: monospace;
-    padding: 5px;
+    font-family: 'Source Code Pro', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    padding: 0 5px;
 }
 
 .input-line input::placeholder {
-    color: #666;
+    color: #565f89;
 }
-.auth-controls {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+
+.terminal-output::-webkit-scrollbar {
+    width: 6px;
+}
+
+.terminal-output::-webkit-scrollbar-track {
+    background: #1a1b26;
+}
+
+.terminal-output::-webkit-scrollbar-thumb {
+    background: #414868;
+    border-radius: 3px;
+}
+.neofetch {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    white-space: pre;
 }
 
-.auth-controls button {
-    padding: 8px 16px;
-    background-color: #4A154B;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.user-info {
-    color: #4A154B;
-    margin-right: 10px;
-    background: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
+.neofetch .separator {
+    margin: 8px 0;
 }

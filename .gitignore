@@ -6,7 +6,9 @@
 /server/node_modules
 
 
-
+pb_data/
+*pb_data/
+*.db
 
 # Environment
 .env

@@ -1,79 +1,76 @@
 import React, { useState, useEffect, useRef } from 'react';
+import parseANSI from '../utils/parseANSI.js';
+import archLinuxLogoASCII from '../assets/archLinuxLogoASCII.js';
 import './Terminal.css';
+
 
 
 const Terminal = () => {
     const [input, setInput] = useState('');
     const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
     const [commands, setCommands] = useState([]);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [currentPath, setCurrentPath] = useState('~');
     const terminalRef = useRef(null);
     const [userData, setUserData] = useState(null);
 
-    useEffect(() => {
-        terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }, [commands]);
-    useEffect(() => {
-        console.log('[Terminal.jsx] Checking auth status on page load.');
-        const checkAuthStatus = async () => {
-            try {
-                const response = await fetch('http://localhost:8080/auth/status', {
-                    method: 'GET',
-                    credentials: 'include',
-                    headers: {
-                        'Accept':'application/json',
-                        'Content-Type': 'application/json',
-                    }
-                });
+	useEffect(() => {
+		const fetchUserData = async function() {
+			try {
+				const response = await fetch('http://localhost:8080/auth/status', {
+					credentials: 'include'
+				});
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+				if (!response.ok) {
+					throw new Error('Failed to fetch user data');
+				}
 
-                const data = await response.json();
-                console.log('Auth status response:', data);
+				const data = await response.json();
+				console.log(`User data fetched successfully:`, data.user);
+				setUserData(data.user);
+			} catch (error) {
+				console.error('Error fetching user data:', error);
+			}
+		};
 
-                if (data.isAuthenticated) {
-                    setIsAuthenticated(true);
-                    setUserData(data.user);
-                } else {
-                    setIsAuthenticated(false);
-                    setUserData(null);
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                setIsAuthenticated(false);
-                setUserData(null);
-            }
-        };
-        checkAuthStatus();
-    }, []);
+		fetchUserData();
+	}, []);
+	useEffect(() => {
+		if (!commands.length && userData) {
+			const welcomeMessage = {
+				input: 'neofetch',
+				output: (
+					<div className="neofetch">
+						{parseANSI(archLinuxLogoASCII)}
+						<span>{userData.userName}@Arf</span>
+						<span className="separator">------------------------</span>
+						<span>{parseANSI('\x1b[1;00mOS: Arch Linux')}</span>
+						<span>Shell: Zshty</span>
+						<span>Terminal: Blåhaj Bash</span>
+						<span>CPU: JavaScript V8</span>
+						<span>Memory: {Math.floor(window.performance.memory?.usedJSHeapSize / 1024) || 'Unknown'} KB</span>
+						<span>Theme: Twilight Zone</span>
+						<span>User: {commands.length}</span>
+					</div>
+				)
+			};
+			setCommands([welcomeMessage]);
+		}
+	}, [userData, commands.length]);
 
-    const handleLogout = async () => {
-        console.log('[Terminal.jsx] Logging out...');
-        try {
-            const response = await fetch('http://localhost:8080/auth/logout', {
-                method: 'POST',
-                credentials: 'include'
-            });
-            if (response.ok) {
-                console.log('[Terminal.jsx] Logout successful.');
-                setIsAuthenticated(false);
-            } else {
-                console.log('[Terminal.jsx] Logout failed with status:', response.status);
-            }
-        } catch (error) {
-            console.error('[Terminal.jsx] Logout failed:', error);
-        }
-    };
+	useEffect(() => {
+		terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+	}, [commands]);
     const handleKeyPress = async (e) => {
         if (e.key === 'Enter') {
             const command = input.trim();
             if (!command) return;
-
-            setHistory(prev => [...prev, command]);
+            setHistory(prev => {
+                const newHistory = [...prev, command];
+                return newHistory.slice(-100);
+            });
+            setHistoryIndex(-1);
             setInput('');
-
             try {
                 const response = await fetch('http://localhost:8080/api/slack/command', {
                     method: 'POST',
@@ -111,8 +108,18 @@ const Terminal = () => {
             }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            const prevCommand = history[history.length - 1];
-            if (prevCommand) setInput(prevCommand);
+            setHistoryIndex(prev => {
+                const newIndex = prev < history.length - 1 ? prev + 1 : prev;
+                setInput(history[history.length - 1 - newIndex] || '');
+                return newIndex;
+            });
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setHistoryIndex(prev => {
+                const newIndex = prev > 0 ? prev - 1 : -1;
+                setInput(newIndex >= 0 ? history[history.length - 1 - newIndex] : '');
+                return newIndex;
+            });
         }
     };
 
@@ -121,22 +128,20 @@ const Terminal = () => {
             <div ref={terminalRef} className="terminal-output">
                 {commands.map((cmd, idx) => (
                     <div key={idx} className="command-line">
-                        <span className="prompt">{userData?.userId || 'guest'}$</span>
+                      	<span className="prompt">[{userData?.userName || 'guest'}@arf {currentPath}]$</span>
                         <span className="command">{cmd.input}</span>
-                        {cmd.error ? (
+                        {(cmd.error) ? (
                             <div className="error">{cmd.error}</div>
                         ) : cmd.output ? (
                             <div className="output">
-                                {typeof cmd.output === 'object' && cmd.output.result
-                                    ? cmd.output.result
-                                    : cmd.output}
+                                {typeof cmd.output === 'string' ? cmd.output : cmd.output}
                             </div>
                         ) : null}
                     </div>
                 ))}
             </div>
             <div className="input-line">
-                <span className="prompt">{userData?.userId || 'guest'}$</span>
+			<span className="prompt">[{userData?.userName || 'guest'}@arf {currentPath}]$</span>
                 <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
