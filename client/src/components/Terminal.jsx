@@ -14,7 +14,14 @@ const Terminal = () => {
     const terminalRef = useRef(null);
     const [userData, setUserData] = useState(null);
 
-	useEffect(() => {
+	const unauthenticatedClientName = (`Anonymous`) || (null);
+	const mockLinuxDistributionName = (`Arf Linux`) || (null);
+	const mockLinuxDistributionNameShortHand_Upper = (`Arf`) || (null);
+	const mockLinuxDistributionNameShortHand_Lower = (`arf`) || (null);
+	
+
+
+	useEffect(function() {
 		const fetchUserData = async function() {
 			try {
 				const response = await fetch('http://localhost:8080/auth/status', {
@@ -34,35 +41,33 @@ const Terminal = () => {
 		};
 
 		fetchUserData();
-	}, []);
-	useEffect(() => {
+	}, [])
+	useEffect(function() {
 		if (!commands.length && userData) {
 			const welcomeMessage = {
 				input: 'neofetch',
 				output: (
 					<div className="neofetch">
 						{parseANSI(archLinuxLogoASCII)}
-						<span>{userData.userName}@Arf</span>
+						<span>{userData?.userName || unauthenticatedClientName }@{mockLinuxDistributionNameShortHand_Upper}</span>
 						<span className="separator">------------------------</span>
-						<span>{parseANSI('\x1b[1;00mOS: Arch Linux')}</span>
-						<span>Shell: Zshty</span>
-						<span>Terminal: Blåhaj Bash</span>
-						<span>CPU: JavaScript V8</span>
-						<span>Memory: {Math.floor(window.performance.memory?.usedJSHeapSize / 1024) || 'Unknown'} KB</span>
-						<span>Theme: Twilight Zone</span>
-						<span>User: {commands.length}</span>
+						<span>{parseANSI(`\x1b[1mOS:\x1b[0m ${mockLinuxDistributionName}`)}</span>
+						<span>{parseANSI('\x1b[1;01mShell:\x1b[1;00m Zshty')}</span>
+						<span>{parseANSI('\x1b[1;01mTerminal:\x1b[1;00mBlåhaj Bash')}</span>
+						<span>{parseANSI(`\x1b[1;01mMemory:\x1b[1;00m${Math.floor(window.performance.memory?.usedJSHeapSize / 1024) || 'Unknown'} KB`)}</span>
+						<span>{parseANSI(`\x1b[1;01mUser:\x1b[1;00m ${userData?.userName || unauthenticatedClientName}`)}</span>
 					</div>
 				)
 			};
 			setCommands([welcomeMessage]);
 		}
-	}, [userData, commands.length]);
+	}, [userData, commands.length, unauthenticatedClientName, mockLinuxDistributionNameShortHand_Upper, mockLinuxDistributionName])
 
 	useEffect(() => {
 		terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
 	}, [commands]);
-    const handleKeyPress = async (e) => {
-        if (e.key === 'Enter') {
+    const handleKeyPress = async (keystrokeEnterInput) => {
+        if (keystrokeEnterInput.key === 'Enter') {
             const command = input.trim();
             if (!command) return;
             setHistory(prev => {
@@ -106,15 +111,15 @@ const Terminal = () => {
                     timestamp: new Date().toISOString()
                 }]);
             }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
+        } else if (keystrokeEnterInput.key === 'ArrowUp') {
+            keystrokeEnterInput.preventDefault();
             setHistoryIndex(prev => {
                 const newIndex = prev < history.length - 1 ? prev + 1 : prev;
                 setInput(history[history.length - 1 - newIndex] || '');
                 return newIndex;
             });
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
+        } else if (keystrokeEnterInput.key === 'ArrowDown') {
+            keystrokeEnterInput.preventDefault();
             setHistoryIndex(prev => {
                 const newIndex = prev > 0 ? prev - 1 : -1;
                 setInput(newIndex >= 0 ? history[history.length - 1 - newIndex] : '');
@@ -128,7 +133,7 @@ const Terminal = () => {
             <div ref={terminalRef} className="terminal-output">
                 {commands.map((cmd, idx) => (
                     <div key={idx} className="command-line">
-                      	<span className="prompt">[{userData?.userName || 'guest'}@arf {currentPath}]$</span>
+                      	<span className="prompt">[{userData?.userName || unauthenticatedClientName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>
                         <span className="command">{cmd.input}</span>
                         {(cmd.error) ? (
                             <div className="error">{cmd.error}</div>
@@ -141,10 +146,10 @@ const Terminal = () => {
                 ))}
             </div>
             <div className="input-line">
-			<span className="prompt">[{userData?.userName || 'guest'}@arf {currentPath}]$</span>
+			<span className="prompt">[{userData?.userName || unauthenticatedClientName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>
                 <input
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(keystrokeInput) => setInput(keystrokeInput.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder="Enter command..."
                     autoFocus
