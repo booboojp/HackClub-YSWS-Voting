@@ -10,6 +10,7 @@ require(`dotenv`).config({
 });
 
 const slackAuth = require(`./authentication/slack.js`);
+const supabase = require(`./database/supabase.js`);
 
 const CommandExecutor = require(`./commands.js`);
 const commandExecutor = new CommandExecutor();
@@ -19,7 +20,6 @@ const commandExecutor = new CommandExecutor();
 global.commandExecutor = commandExecutor;
 
 const { parseCommand } = require(`./utils/commandParser.js`);
-const pbClient = require(`./database/pocketbase`);
 const verifySlackRequest = require(`./middleware/slackVerification.js`);
 
 const app = express();
@@ -33,6 +33,18 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// supabase testing
+// (async() => {
+// 	let { data: ysws, error } = await supabase
+// 		.from(`ysws`)
+// 		.select(`*`)
+// 	try {
+// 		console.warn(`YSWS Data:`, ysws);
+// 	} catch (error) {
+// 		console.error(`Error fetching YSWS data:`, error);
+// 	}
+// })();
 
 const sessionStore = new FileStore({
 	path: path.join(__dirname, `sessions`),
@@ -248,7 +260,6 @@ const cleanupSessions = () => {
 cleanupSessions();
 async function startServer() {
 	try {
-		await pbClient.connect();
 		app.listen(8080, () => console.log(`Server running on port 8080`));
 	} catch (err) {
 		console.error(`Failed to start:`, err);

@@ -1,5 +1,5 @@
 const Command = require(`../utils/Command.js`);
-const pbClient = require(`../database/pocketbase`);
+const supabase = require(`../database/supabase`);
 
 class YSWSCommand extends Command {
 	constructor() {
@@ -13,10 +13,9 @@ class YSWSCommand extends Command {
 	}
 
 	async beforeExecute(req) {
-		console.log('RUNNING BEFORE EXEC!!!')
-		this.pb = pbClient.getInstance();
-		if (!this.pb.authStore.isValid) {
-			throw new Error(`Not authenticated with PocketBase`);
+		console.log(`RUNNING BEFORE EXEC!!!`);
+		if (!this.supabase.auth.session()) {
+			throw new Error(`Not authenticated with SupaBase`);
 		}
 
 		try {
@@ -91,10 +90,7 @@ class YSWSCommand extends Command {
 		case `search`:
 		case `list`: {
 			const [tag] = rest;
-			const results = await this.pb.collection(`ysws`).getList(1, 10, {
-				filter: tag ? `tags ~ "${tag}"` : ``,
-				sort: `-created`
-			});
+			const results = await this.supabase.from(`ysws`).select(`*`).eq(`tags`, tag).eq(`status`, `ideation`);
 
 			if (!results.items.length) {
 				return { success: true, result: `No projects found` };
