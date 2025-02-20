@@ -1,26 +1,9 @@
 const express = require(`express`);
 const cors = require(`cors`);
-const fs = require(`fs`);
-const path = require(`path`);
-const session = require(`express-session`);
-const FileStore = require(`session-file-store`)(session);
-
-require(`dotenv`).config({
-	path: path.resolve(__dirname, `../.env`)
-});
-
-const slackAuth = require(`./authentication/slack.js`);
 const supabase = require(`./database/supabase.js`);
-
 const CommandExecutor = require(`./commands.js`);
-const commandExecutor = new CommandExecutor();
-/**
- * Yes I know I am lazy
- */
-global.commandExecutor = commandExecutor;
 
-const { parseCommand } = require(`./utils/commandParser.js`);
-const verifySlackRequest = require(`./middleware/slackVerification.js`);
+require(`dotenv`).config();
 
 const app = express();
 app.use(cors({
@@ -28,64 +11,15 @@ app.use(cors({
 	credentials: true,
 	methods: [`GET`, `POST`, `OPTIONS`],
 	allowedHeaders: [`Content-Type`, `Authorization`],
-	exposedHeaders: [`Set-Cookie`],
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// supabase testing
-// (async() => {
-// 	let { data: ysws, error } = await supabase
-// 		.from(`ysws`)
-// 		.select(`*`)
-// 	try {
-// 		console.warn(`YSWS Data:`, ysws);
-// 	} catch (error) {
-// 		console.error(`Error fetching YSWS data:`, error);
-// 	}
-// })();
+const commandExecutor = new CommandExecutor();
+global.commandExecutor = commandExecutor;
 
-const sessionStore = new FileStore({
-	path: path.join(__dirname, `sessions`),
-	ttl: 86400,
-	retries: 0,
-	logFn: function(message) {
-		console.log(`[Session Store]:`, message);
-	}
-});
-
-sessionStore.on(`error`, function(error) {
-	console.error(`[Session Store Error]:`, error);
-});
-
-app.use(session({
-	store: sessionStore,
-	name: `connect.sid`,
-	secret: process.env.SESSION_SECRET,
-	resave: true,
-	saveUninitialized: true,
-	rolling: true, // DO NOT CHANGE FOR THE LOVE OF GOD
-	cookie: {
-		maxAge: 24 * 60 * 60 * 1000,
-		httpOnly: true,
-		secure: false,
-		sameSite: `lax`,
-		path: `/`,
-		domain: `localhost`
-	}
-}));
-app.use((req, res, next) => {
-	// This shit clutters up the console :()
-	// console.log(`Session Debug:`, {
-	// 	id: req.sessionID,
-	// 	hasAuth: !!req.session?.auth,
-	// 	cookie: req.session?.cookie
-	// });
-	next();
-});
-
-app.post(`/api/command`, async(req, res) => {
+app.post(`/api/command`, async (req, res) => {
 	try {
 		const { command } = req.body;
 		if (!command) return res.status(400).json({ error: `No command provided` });
@@ -97,167 +31,15 @@ app.post(`/api/command`, async(req, res) => {
 		res.status(400).json({ error: error.message });
 	}
 });
-app.get(`/auth/slack`, (req, res) => {
-	const currentSessionId = req.sessionID;
-	console.log(`Starting OAuth flow with session ID:`, currentSessionId);
-	console.log(`Session object:`, req.session);
 
-	req.session.slackState = currentSessionId;
-
-	req.session.save((err) => {
-		if (err) {
-			console.error(`Error saving session:`, err);
-			return res.status(500).json({ error: `Session save failed` });
-		}
-
-		const botScopes = [
-			`channels:read`,
-			`chat:write`,
-			`commands`,
-			`groups:read`,
-			`users:read`,
-			`users:read.email`
-		];
-
-		const userScopes = [
-			`identity.avatar`,
-			`identity.basic`,
-			`identity.email`
-		];
-
-		const slackAuthUrl = `https://slack.com/oauth/v2/authorize?` +
-			`client_id=${process.env.SLACK_CLIENT_ID}` +
-			`&scope=${botScopes.join(`,`)}` +
-			`&user_scope=${userScopes.join(`,`)}` +
-			`&state=${currentSessionId}` +
-			`&redirect_uri=${encodeURIComponent(process.env.SLACK_REDIRECT_URI)}`;
-
-		res.redirect(slackAuthUrl);
-	});
-});
-
-app.get(`/auth/slack/callback`, async(req, res) => {
-	try {
-		const { code, state } = req.query;
-		console.log(`Callback received with state:`, state);
-
-		const sessionPath = path.join(__dirname, `sessions`, `${state}.json`);
-		if (!fs.existsSync(sessionPath)) {
-			console.error(`Session file not found:`, sessionPath);
-			return res.status(403).json({ error: `Invalid session` });
-		}
-
-		const sessionData = JSON.parse(fs.readFileSync(sessionPath));
-		if (!sessionData.slackState || sessionData.slackState !== state) {
-			console.error(`State mismatch:`, {
-				expected: sessionData.slackState,
-				received: state
-			});
-			return res.status(403).json({ error: `State mismatch` });
-		}
-
-		const tokenData = await slackAuth.getAccessToken(code);
-		const validation = await slackAuth.validateAndStoreTokens(tokenData);
-
-		if (validation.isValid) {
-			sessionData.auth = tokenData;
-			sessionData.__lastAccess = Date.now();
-
-			fs.writeFileSync(sessionPath, JSON.stringify(sessionData));
-
-			console.log(`Session updated successfully:`, {
-				sessionId: state,
-				hasAuth: true
-			});
-
-			res.redirect(`http://localhost:3000`);
-		} else {
-			res.status(403).json({ error: `Authentication validation failed` });
-		}
-	} catch (error) {
-		console.error(`Auth callback error:`, error);
-		res.status(500).json({ error: `Authentication failed` });
-	}
-});
-
-app.get(`/auth/status`, (req, res) => {
-	console.log(`Auth Status Check:`, {
-		sessionID: req.sessionID,
-		hasSession: !!req.session,
-		hasAuth: !!req.session?.auth
-	});
-
-	req.session.touch();
-
+app.get(`/auth/status`, async (req, res) => {
+	const { data: { user }, error } = await supabase.auth.getUser();
 	res.json({
-		isAuthenticated: !!req.session.auth,
-		user: req.session.auth || null,
-		sessionID: req.sessionID
-	});
-});
-app.post(`/auth/logout`, (req, res) => {
-	req.session.destroy((err) => {
-		if (err) {
-			return res.status(500).json({ error: `Could not log out` });
-		}
-		res.json({ success: true });
+		isAuthenticated: !!user,
+		user: user || null
 	});
 });
 
-app.use(`/api/slack/*`, verifySlackRequest);
-app.post(`/api/slack/command`, async(req, res) => {
-	const { command } = req.body;
-	try {
-		const { command: cmdName, params } = parseCommand(command);
-		const result = await commandExecutor.execute(cmdName, params, req);
-
-		if (result.redirect) {
-			return res.json({ redirect: result.redirect });
-		}
-
-		res.json({ success: true, result: result.result });
-	} catch (error) {
-		res.status(400).json({
-			success: false,
-			error: error.message
-		});
-	}
-});
-
-app.post(`/api/slack/events`, async(req, res) => {
-	// Slack events crap here, this is where we can expand more with Slack API!
-	const { type, challenge } = req.body;
-
-	if (type === `url_verification`) {
-		return res.json({ challenge });
-	}
-
-	res.json({ ok: true });
-});
-
-app.post(`/api/slack/test`, verifySlackRequest, (req, res) => {
-	res.json({ message: `Slack verification working!` });
-});
-const cleanupSessions = () => {
-	const sessionsPath = path.join(__dirname, `sessions`);
-	if (fs.existsSync(sessionsPath)) {
-		fs.readdirSync(sessionsPath).forEach(file => {
-			if (file.endsWith(`.json`)) {
-				const filePath = path.join(sessionsPath, file);
-				try {
-					const sessionData = JSON.parse(fs.readFileSync(filePath));
-					// This code dleetes the session file if it is older than 24 hours
-					if (sessionData.__lastAccess + (24 * 60 * 60 * 1000) < Date.now()) {
-						fs.unlinkSync(filePath);
-					}
-				} catch (err) {
-					console.error(`Error reading session file:`, err);
-				}
-			}
-		});
-	}
-};
-cleanupSessions();
 async function startServer() {
 	try {
 		app.listen(8080, () => console.log(`Server running on port 8080`));

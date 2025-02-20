@@ -1,4 +1,5 @@
 const Command = require(`../utils/Command.js`);
+const supabase = require(`../database/supabase.js`);
 
 class LoginCommand extends Command {
 	constructor() {
@@ -12,14 +13,19 @@ class LoginCommand extends Command {
 	}
 
 	async execute(params, req) {
-		if (req.session?.auth) {
-			throw new Error(`Already authenticated`);
-		}
+		const { data, error } = await supabase.auth.signInWithOAuth({
+			provider: `slack_oidc`,
+			options: {
+				redirectTo: `${process.env.CLIENT_URL}/auth/callback`
+			}
+		});
+
+		if (error) throw error;
 
 		return {
 			success: true,
 			result: `Redirecting to Slack login...`,
-			redirect: `http://localhost:8080/auth/slack`
+			redirect: data.url
 		};
 	}
 }

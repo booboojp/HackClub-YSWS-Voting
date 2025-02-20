@@ -1,29 +1,30 @@
 const Command = require(`../utils/Command.js`);
+const supabase = require(`../database/supabase.js`);
 
 class StatusCommand extends Command {
 	constructor() {
 		super({
 			name: `status`,
-			aliases: [`whoami`, `auth`],
+			aliases: [`whoami`],
 			params: [],
 			requiresAuth: false,
-			description: `Check your current authentication status`
+			description: `Check authentication status`
 		});
 	}
 
 	async execute(params, req) {
-		if (!req.session) {
-			return {
-				success: true,
-				result: `No active session`
-			};
-		}
+		const { data: { user }, error } = await supabase.auth.getUser();
+
+		if (error) return {
+			success: true,
+			result: `Error fetching authentication status: ${error.message}`
+		};
 
 		return {
 			success: true,
-			result: req.session.auth ?
-				`Authenticated as ${req.session.auth.userName} (${req.session.auth.userId})\nTeam: ${req.session.auth.teamName}` :
-				`Not authenticated`
+			result: user ?
+				`Authenticated as ${user.user_metadata.full_name || user.user_metadata.name} (${user.id})` :
+				`Not authenticated - Type 'login' to authenticate with Slack`
 		};
 	}
 }

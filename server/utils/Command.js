@@ -1,3 +1,5 @@
+const supabase = require('../database/supabase');
+
 class Command {
 	constructor(options = {}) {
 		this.name = options.name || ``;
@@ -8,8 +10,12 @@ class Command {
 	}
 
 	async beforeExecute(req) {
-		if (this.requiresAuth && !req.session?.auth) {
-			throw new Error(`Authentication required`);
+		if (this.requiresAuth) {
+			const { data: { user }, error } = await supabase.auth.getUser();
+			if (error || !user) {
+				throw new Error('Authentication required');
+			}
+			req.user = user;
 		}
 		return true;
 	}

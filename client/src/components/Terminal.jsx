@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import parseANSI from '../utils/parseANSI.js';
 import archLinuxLogoASCII from '../assets/archLinuxLogoASCII.js';
+import { supabase } from '../utils/supabase';
 import './Terminal.css';
 
 
@@ -18,9 +19,23 @@ const Terminal = () => {
 	const mockLinuxDistributionName = (`Arf Linux`) || (null);
 	const mockLinuxDistributionNameShortHand_Upper = (`Arf`) || (null);
 	const mockLinuxDistributionNameShortHand_Lower = (`arf`) || (null);
-	
 
 
+	useEffect(() => {
+		const handleAuthCallback = async() => {
+			const hash = window.location.hash;
+			if (hash) {
+				const { data, error } = await supabase.auth.getSession();
+				if (error) console.error('Auth callback error:', error);
+				if (data?.session) {
+					setUserData(data.session.user);
+					window.location.href = '/';
+				}
+			}
+		};
+
+		handleAuthCallback();
+	}, []);
 	useEffect(function() {
 		const fetchUserData = async function() {
 			try {
@@ -42,6 +57,19 @@ const Terminal = () => {
 
 		fetchUserData();
 	}, [])
+	useEffect(() => {
+		const { data: { subscription } } = supabase.auth.onAuthStateChange(
+			(event, session) => {
+				if (event === `SIGNED_IN`) {
+					setUserData(session?.user);
+				} else if (event === `SIGNED_OUT`) {
+					setUserData(null);
+				}
+			}
+		);
+
+		return () => subscription?.unsubscribe();
+	}, []);
 	useEffect(function() {
 		if (!commands.length && userData) {
 			const welcomeMessage = {
@@ -77,14 +105,14 @@ const Terminal = () => {
             setHistoryIndex(-1);
             setInput('');
             try {
-                const response = await fetch('http://localhost:8080/api/slack/command', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ command })
-                });
+                const response = await fetch('http://localhost:8080/api/command', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					credentials: 'include',
+					body: JSON.stringify({ command })
+				});
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);

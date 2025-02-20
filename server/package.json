@@ -6,10 +6,7 @@
     "start": "cls && node index.js",
     "lint": "cls && eslint .",
     "lint:fix": "cls && eslint . --fix",
-    "pb:start": "node scripts/startPocketbase.js",
-    "dev": "node index.js",
-    "runngrok": "ngrok http http://localhost:8080",
-    "dev:pb": "concurrently --kill-others \"npm run pb:start\" \"npm run dev\""
+    "dev": "cls && node index.js"
   },
   "proxy": "http://localhost:8080",
   "keywords": [],
@@ -17,14 +14,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@slack/web-api": "^7.8.0",
     "@supabase/supabase-js": "^2.48.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "express-session": "^1.18.1",
-    "pocketbase": "^0.21.1",
-    "session-file-store": "^1.5.0"
+    "express": "^4.21.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

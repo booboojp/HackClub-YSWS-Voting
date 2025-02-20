@@ -13,54 +13,8 @@ class YSWSCommand extends Command {
 	}
 
 	async beforeExecute(req) {
-		console.log(`RUNNING BEFORE EXEC!!!`);
-		if (!this.supabase.auth.session()) {
-			throw new Error(`Not authenticated with SupaBase`);
-		}
-
-		try {
-			await this.pb.collections.getOne(`ysws`);
-		} catch (error) {
-			if (error.status === 404) {
-				await this.pb.collections.create({
-					name: `ysws`,
-					type: `base`,
-					schema: [
-						{
-							name: `title`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `description`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `tags`,
-							type: `json`,
-							required: false
-						},
-						{
-							name: `creator`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `status`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `votes`,
-							type: `json`,
-							required: false
-						}
-					]
-				});
-			} else {
-				throw error;
-			}
+		if (!supabase.auth.getUser()) {
+			throw new Error('Not authenticated with Supabase');
 		}
 		await super.beforeExecute(req);
 	}
