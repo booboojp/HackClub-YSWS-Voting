@@ -1,14 +1,14 @@
 const Command = require(`../utils/Command`);
 const supabase = require(`../database/supabase`);
 
-class LoginCommand extends Command {
+class SlackAuthCommand extends Command {
     constructor() {
         super({
-            name: `login`,
-            aliases: [`signin`],
+            name: `slackauth`,
+            aliases: [],
             params: [],
             requiresAuth: false,
-            description: `Login with Slack`
+            description: `Initiate Slack authentication`
         });
     }
 
@@ -20,10 +20,10 @@ class LoginCommand extends Command {
         if (error) throw error;
         return {
             success: true,
-            result: `Redirecting to Slack login...`,
+            result: `Redirecting to Slack auth...`,
             redirect: data.url
         };
     }
 }
 
-module.exports = LoginCommand;
+module.exports = SlackAuthCommand;

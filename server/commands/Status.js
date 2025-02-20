@@ -8,35 +8,37 @@ class StatusCommand extends Command {
             aliases: [`whoami`],
             params: [],
             requiresAuth: false,
-            description: `Check authentication status`
+            description: `Check if you're authenticated with Slack via Supabase`
         });
     }
 
     async execute(params, req) {
         try {
-            const { data: { user }, error } = await supabase.auth.getUser();
-
-            if (!user || error) {
+            const authHeader = req.headers.authorization;
+            if(!authHeader || !authHeader.startsWith(`Bearer `)) {
                 return {
                     success: true,
-                    result: `Not authenticated - Type 'login' to authenticate with Slack`
+                    result: `No, you're not authenticated with Slack`
                 };
             }
 
-            const displayName = user.user_metadata?.name ||
-                user.user_metadata?.preferred_username ||
-                user.email ||
-                'Unknown User';
+            const token = authHeader.substring(7);
+            const { data: { user }, error } = await supabase.auth.getUser(token);
+            if(error || !user) {
+                return {
+                    success: true,
+                    result: `No, you're not authenticated with Slack`
+                };
+            }
 
             return {
                 success: true,
-                result: `Authenticated as ${displayName}`
+                result: `Yes, you're authenticated with Slack`
             };
         } catch (error) {
-            console.error(`Status check failed:`, error);
             return {
                 success: false,
-                error: `Failed to check authentication status`
+                error: `Failed to check Slack authentication`
             };
         }
     }

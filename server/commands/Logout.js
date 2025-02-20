@@ -1,5 +1,5 @@
-const Command = require(`../utils/Command.js`);
-const supabase = require(`../database/supabase.js`);
+const Command = require(`../utils/Command`);
+const supabase = require(`../database/supabase`);
 
 class LogoutCommand extends Command {
     constructor() {
@@ -8,26 +8,14 @@ class LogoutCommand extends Command {
             aliases: [`signout`],
             params: [],
             requiresAuth: false,
-            description: `Logout from your current session`
+            description: `Logout from current session`
         });
     }
 
     async execute(params, req) {
-        try {
-            const { error } = await supabase.auth.signOut();
-
-            if (error) throw error;
-
-            return {
-                success: true,
-                result: `Successfully logged out`
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: `Logout failed: ${error.message}`
-            };
-        }
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        return { success: true, result: `Successfully logged out` };
     }
 }
 

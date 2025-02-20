@@ -1,32 +1,45 @@
-const supabase = require('../database/supabase');
+const supabase = require(`../database/supabase`);
 
 class Command {
-	constructor(options = {}) {
-		this.name = options.name || ``;
-		this.aliases = options.aliases || [];
-		this.params = options.params || [];
-		this.requiresAuth = options.requiresAuth || false;
-		this.description = options.description || `No description provided`;
-	}
+    constructor(options = {}) {
+        this.name = options.name || ``;
+        this.aliases = options.aliases || [];
+        this.params = options.params || [];
+        this.requiresAuth =
+            options.requiresAuth !== undefined ? options.requiresAuth : true;
+        this.description = options.description || `No description provided`;
+    }
 
-	async beforeExecute(req) {
-		if (this.requiresAuth) {
-			const { data: { user }, error } = await supabase.auth.getUser();
-			if (error || !user) {
-				throw new Error('Authentication required');
-			}
-			req.user = user;
+    async beforeExecute(req) {
+		if (!this.requiresAuth) return true;
+
+		const auth = req.headers.authorization;
+		if (!auth || !auth.startsWith('Bearer ')) {
+			throw new Error('Authentication required');
 		}
-		return true;
+
+		const token = auth.split(' ')[1];
+
+		try {
+			const { data: { user }, error } = await supabase.auth.getUser(token);
+			if (error) throw error;
+			if (!user) throw new Error('User not found');
+
+			req.user = user;
+			return true;
+		} catch (error) {
+			console.error('Auth error:', error);
+			throw new Error('Authentication failed');
+		}
 	}
 
-	async execute(params, req) {
-		throw new Error(`Command must implement execute method`);
-	}
+    async execute(params, req) {
+        throw new Error(`Command must implement execute`);
+    }
 
-	async afterExecute(success) {
-		return true;
-	}
+    async afterExecute(success) {
+        return true;
+    }
 }
 
 module.exports = Command;
