@@ -1,16 +1,24 @@
 const { createClient } = require(`@supabase/supabase-js`);
 require(`dotenv`).config();
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY)
+    throw new Error(`Missing SUPABASE_URL or SUPABASE_KEY environment variables`);
 
-if (!supabaseUrl || !supabaseKey) {
-	console.error(`Missing Supabase environment variables:
-        SUPABASE_URL: ${supabaseUrl ? '✓' : '✗'}
-        SUPABASE_KEY: ${supabaseKey ? '✓' : '✗'}`);
-	process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_KEY,
+    {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            storage: {
+                getItem: key => null,
+                setItem: (key, value) => {},
+                removeItem: key => {}
+            }
+        }
+    }
+);
 
 module.exports = supabase;
