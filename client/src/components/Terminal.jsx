@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import parseANSI from '../utils/parseANSI.js';
 import archLinuxLogoASCII from '../assets/archLinuxLogoASCII.js';
-import { supabase } from '../utils/supabase';
+import { supabase, getSession } from '../utils/supabase';
 import './Terminal.css';
 
 
@@ -14,13 +14,61 @@ const Terminal = () => {
     const [currentPath, setCurrentPath] = useState('~');
     const terminalRef = useRef(null);
     const [userData, setUserData] = useState(null);
+	const [session, setSession] = useState(null)
+    const [loading, setLoading] = useState(true)
 
 	const unauthenticatedClientName = (`Anonymous`) || (null);
 	const mockLinuxDistributionName = (`Arf Linux`) || (null);
 	const mockLinuxDistributionNameShortHand_Upper = (`Arf`) || (null);
 	const mockLinuxDistributionNameShortHand_Lower = (`arf`) || (null);
+	useEffect(() => {
+        const setupAuth = async () => {
+            // Check for existing session
+            const session = await getSession()
+            setSession(session)
+            setLoading(false)
 
+            // Listen for auth changes
+            supabase.auth.onAuthStateChange((_event, session) => {
+                setSession(session)
+            })
+        }
 
+        setupAuth()
+    }, [])
+	const executeCommand = async (command, params) => {
+        if (!session && command !== 'login' && command !== 'help') {
+            return {
+                success: false,
+                error: 'Please login first'
+            }
+        }
+
+        try {
+            const response = await fetch(`/api/commands/${command}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({ params })
+            })
+
+            const data = await response.json()
+
+            if (data.redirect) {
+                window.location.href = data.redirect
+                return { success: true, result: 'Redirecting...' }
+            }
+
+            return data
+        } catch (error) {
+            return {
+                success: false,
+                error: 'Command execution failed'
+            }
+        }
+    }
 	useEffect(() => {
 		const handleAuthCallback = async() => {
 			const hash = window.location.hash;

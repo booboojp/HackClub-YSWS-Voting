@@ -3,14 +3,14 @@ import Terminal from './components/Terminal.jsx';
 import Testing from './components/Testing.jsx';
 import '@fontsource/source-code-pro';
 import '@fontsource/source-code-pro';
+import { AuthProvider } from './components/AuthProvider'
 
 function App() {
-  return (
-    <div className="App">
-      {/*<Testing />*/}
-      <Terminal />
-    </div>
-  );
+    return (
+        <AuthProvider>
+            <Terminal />
+        </AuthProvider>
+    )
 }
 
-export default App;
+export default App

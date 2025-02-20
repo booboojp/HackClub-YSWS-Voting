@@ -1,29 +1,34 @@
 const Command = require(`../utils/Command.js`);
+const supabase = require(`../database/supabase.js`);
 
 class LogoutCommand extends Command {
-	constructor() {
-		super({
-			name: `logout`,
-			aliases: [`signout`],
-			params: [],
-			requiresAuth: true,
-			description: `Logout from your current session`
-		});
-	}
+    constructor() {
+        super({
+            name: `logout`,
+            aliases: [`signout`],
+            params: [],
+            requiresAuth: false,
+            description: `Logout from your current session`
+        });
+    }
 
-	async execute(params, req) {
-		await new Promise((resolve, reject) => {
-			req.session.destroy((err) => {
-				if (err) reject(err);
-				resolve();
-			});
-		});
+    async execute(params, req) {
+        try {
+            const { error } = await supabase.auth.signOut();
 
-		return {
-			success: true,
-			result: `Successfully logged out`
-		};
-	}
+            if (error) throw error;
+
+            return {
+                success: true,
+                result: `Successfully logged out`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: `Logout failed: ${error.message}`
+            };
+        }
+    }
 }
 
 module.exports = LogoutCommand;

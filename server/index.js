@@ -10,15 +10,51 @@ app.use(cors({
 	origin: `http://localhost:3000`,
 	credentials: true,
 	methods: [`GET`, `POST`, `OPTIONS`],
-	allowedHeaders: [`Content-Type`, `Authorization`],
+	allowedHeaders: [
+		`Content-Type`,
+		`Authorization`,
+		`x-client-info`,
+		`apikey`,
+		`X-Client-Info`
+	]
 }));
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const commandExecutor = new CommandExecutor();
 global.commandExecutor = commandExecutor;
+app.use(async (req, res, next) => {
+    const authHeader = req.headers.authorization;
 
+    if (!authHeader) {
+        return next();
+    }
+
+    try {
+        const token = authHeader.split(' ')[1];
+        if (!token) return next();
+
+        // Set session in supabase client
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+		// Detialed Logging Deuggng Message
+		console.log(`Auth Middleware:`, { user, error });
+		// Check if user is null
+		if (!user) {
+			console.log(`Auth Middleware: No user found`);
+		}
+        if (error || !user) {
+            return next();
+        }
+
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error('Auth middleware error:', error);
+        next();
+    }
+});
 app.post(`/api/command`, async (req, res) => {
 	try {
 		const { command } = req.body;
@@ -32,12 +68,28 @@ app.post(`/api/command`, async (req, res) => {
 	}
 });
 
-app.get(`/auth/status`, async (req, res) => {
-	const { data: { user }, error } = await supabase.auth.getUser();
-	res.json({
-		isAuthenticated: !!user,
-		user: user || null
-	});
+
+
+app.get(`/auth/callback`, async function (req, res) {
+    const next = req.query.next ?? `/`;
+
+    console.log(`Auth Callback: Received code:`, req.query.code); // Log the code
+    console.log(`Auth Callback: Redirecting to:`, next);
+
+    res.redirect(303, `/${next.slice(1)}`);
+    console.log(`Auth Callback: Redirected to /${next.slice(1)}`);
+});
+
+
+
+app.post('/auth/logout', async (req, res) => {
+	const { error } = await supabase.auth.signOut();
+
+	if (error) {
+		return res.status(500).json({ error: error.message });
+	}
+
+	res.json({ success: true });
 });
 
 async function startServer() {
