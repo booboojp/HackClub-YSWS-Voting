@@ -5,6 +5,11 @@
 /client/node_modules
 /server/node_modules
 
+pb_data/
+pb_data/*
+*pb_data/
+*.db
+
 # Environment
 .env
 # Soon to be added envs for different environments, too lazy tho rn

@@ -1,86 +1,73 @@
+const fs = require(`fs`);
+const path = require(`path`);
 const { validateParams } = require(`./utils/commandParser.js`);
+
 class CommandExecutor {
 	constructor() {
 		this.commands = new Map();
-        
-		this.registerCommand(`help`, [], () => ({
-			success: true,
-			result: `Available commands:\n- help\n- echo <message>\n- add <num1> <num2>`
-		}));
-
-		this.registerCommand(`echo`, [`message`], (_, ...params) => ({
-			success: true,
-			result: params.join(` `)
-		}));
-
-		this.registerCommand(`add`, [`num1`, `num2`], (_, num1, num2) => {
-			const n1 = parseFloat(num1);
-			const n2 = parseFloat(num2);
-            
-			if (isNaN(n1) || isNaN(n2)) {
-				throw new Error(`Invalid number parameters`);
-			}
-            
-			return { success: true, result: n1 + n2 };
-		});
-		this.registerCommand(`login`, [], (_, req) => {
-			if (req.session?.auth) {
-				throw new Error(`Already authenticated`);
-			}
-			return {
-				success: true,
-				result: `Redirecting to Slack login...`,
-				redirect: `http://localhost:8080/auth/slack`
-			};
-		});
-
-		this.registerCommand(`logout`, [], (_, req) => {
-			if (!req.session?.auth) {
-				throw new Error(`Not authenticated`);
-			}
-			req.session.destroy();
-			return {
-				success: true,
-				result: `Successfully logged out`
-			};
-		});
-		this.registerCommand(`status`, [], (_, req) => {
-			if (!req.session) {
-				return {
-					success: true,
-					result: `No active session`
-				};
-			}
-
-			return {
-				success: true,
-				result: req.session.auth ? 
-					`Authenticated as ${req.session.auth.userName} (${req.session.auth.userId})\nTeam: ${req.session.auth.teamName}` :
-					`Not authenticated`
-			};
-		});
-
-		this.registerCommand(`newcommand`, [`param1`, `param2`], (_, param1, param2) => ({
-			success: true,
-			result: `Processed ${param1} and ${param2}`
-		}));
+		this.loadCommands();
 	}
 
-	registerCommand(name, requiredParams, executor) {
-		this.commands.set(name.toLowerCase(), { requiredParams, executor });
+	loadCommands() {
+		const commandsDir = path.join(__dirname, `commands`);
+		console.log(`[CommandExecutor] Loading commands from ${commandsDir}`);
+
+		fs.readdirSync(commandsDir).forEach(file => {
+			if (!file.endsWith(`.js`)) return;
+
+			try {
+				const CommandClass = require(path.join(commandsDir, file));
+				if (typeof CommandClass !== `function`) {
+					console.error(`[CommandExecutor] Failed to load ${file}: Not a class/constructor`);
+					return;
+				}
+
+				const command = new CommandClass();
+				this.commands.set(command.name.toLowerCase(), command);
+
+				command.aliases.forEach(alias => {
+					this.commands.set(alias.toLowerCase(), command);
+				});
+
+				console.log(`[CommandExecutor] Loaded command: ${command.name} (aliases: ${command.aliases.join(`, `)}) from ${file}`);
+			} catch (error) {
+				console.error(`[CommandExecutor] Failed to load ${file}:`, error.message);
+			}
+		});
+
+		console.log(`[CommandExecutor] Loaded ${this.getCommands().length} commands`);
 	}
 
 	async execute(command, params, req) {
-		const cmd = this.commands.get(command) || (() => { 
-			throw new Error(`Unknown command: ${command}`); 
-		})();
-    
-		const validation = validateParams(command, cmd.requiredParams, params);
+		const cmd = this.commands.get(command.toLowerCase());
+		if (!cmd) {
+			console.error(`[CommandExecutor] Unknown command: ${command}`);
+			throw new Error(`Unknown command: ${command}`);
+		}
+
+		console.log(`[CommandExecutor] Executing command: ${command} with params:`, params);
+
+		const validation = validateParams(command, cmd.params, params);
 		if (!validation.valid) {
+			console.error(`[CommandExecutor] Validation failed for ${command}:`, validation.error);
 			throw new Error(validation.error);
 		}
-    
-		return cmd.executor(command, ...params, req);
+
+		try {
+			await cmd.beforeExecute(req);
+			const result = await cmd.execute(params, req);
+			await cmd.afterExecute(true);
+			console.log(`[CommandExecutor] Successfully executed ${command}`);
+			return result;
+		} catch (error) {
+			console.error(`[CommandExecutor] Failed to execute ${command}:`, error.message);
+			await cmd.afterExecute(false);
+			throw error;
+		}
+	}
+
+	getCommands() {
+		return [...new Set(this.commands.values())];
 	}
 }
 

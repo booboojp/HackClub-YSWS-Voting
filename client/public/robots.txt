@@ -1,3 +1,4 @@
+# We just let anyone use bots or scraping, because why not.
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
