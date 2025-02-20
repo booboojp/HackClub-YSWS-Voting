@@ -38,12 +38,12 @@ const sessionStore = new FileStore({
 	path: path.join(__dirname, `sessions`),
 	ttl: 86400,
 	retries: 0,
-	logFn: function(message) {
+	logFn: function (message) {
 		console.log(`[Session Store]:`, message);
 	}
 });
 
-sessionStore.on(`error`, function(error) {
+sessionStore.on(`error`, function (error) {
 	console.error(`[Session Store Error]:`, error);
 });
 
@@ -73,16 +73,30 @@ app.use((req, res, next) => {
 	next();
 });
 
-app.post(`/api/command`, async(req, res) => {
+app.post(`/api/command`, async function(req, res) {
 	try {
 		const { command } = req.body;
-		if (!command) return res.status(400).json({ error: `No command provided` });
+		if (!command) {
+			return res.json({
+				success: false,
+				result: `No command provided`
+			});
+		}
 
 		const [cmdName, ...params] = command.split(` `);
 		const result = await commandExecutor.execute(cmdName, params, req);
-		res.json(result);
+		console.warn(`${result} NON ERROR 1`);
+		// Always send JSON response, never throw
+		res.json(result || {
+			success: false,
+			result: `Command failed to return a result`
+		});
 	} catch (error) {
-		res.status(400).json({ error: error.message });
+		console.warn(`${error} ERROR 2`);
+		res.json({
+			success: false,
+			result: `Command error: ${error.message}`
+		});
 	}
 });
 app.get(`/auth/slack`, (req, res) => {
@@ -124,7 +138,7 @@ app.get(`/auth/slack`, (req, res) => {
 	});
 });
 
-app.get(`/auth/slack/callback`, async(req, res) => {
+app.get(`/auth/slack/callback`, async (req, res) => {
 	try {
 		const { code, state } = req.query;
 		console.log(`Callback received with state:`, state);
@@ -193,7 +207,7 @@ app.post(`/auth/logout`, (req, res) => {
 });
 
 app.use(`/api/slack/*`, verifySlackRequest);
-app.post(`/api/slack/command`, async(req, res) => {
+app.post(`/api/slack/command`, async (req, res) => {
 	const { command } = req.body;
 	try {
 		const { command: cmdName, params } = parseCommand(command);
@@ -211,8 +225,9 @@ app.post(`/api/slack/command`, async(req, res) => {
 		});
 	}
 });
+app.post('api/slack/listCommand')
 
-app.post(`/api/slack/events`, async(req, res) => {
+app.post(`/api/slack/events`, async (req, res) => {
 	// Slack events crap here, this is where we can expand more with Slack API!
 	const { type, challenge } = req.body;
 

@@ -55,6 +55,11 @@ class CommandExecutor {
 
 		try {
 			await cmd.beforeExecute(req);
+
+			for (let i = 0; i < params.length; i++) {
+				await cmd.processParameter(i, params[i], req);
+			}
+
 			const result = await cmd.execute(params, req);
 			await cmd.afterExecute(true);
 			console.log(`[CommandExecutor] Successfully executed ${command}`);

@@ -18,7 +18,7 @@ const Terminal = () => {
 	const mockLinuxDistributionName = (`Arf Linux`) || (null);
 	const mockLinuxDistributionNameShortHand_Upper = (`Arf`) || (null);
 	const mockLinuxDistributionNameShortHand_Lower = (`arf`) || (null);
-	
+
 
 
 	useEffect(function() {
@@ -68,49 +68,43 @@ const Terminal = () => {
 	}, [commands]);
     const handleKeyPress = async (keystrokeEnterInput) => {
         if (keystrokeEnterInput.key === 'Enter') {
-            const command = input.trim();
-            if (!command) return;
-            setHistory(prev => {
-                const newHistory = [...prev, command];
-                return newHistory.slice(-100);
-            });
-            setHistoryIndex(-1);
-            setInput('');
-            try {
-                const response = await fetch('http://localhost:8080/api/slack/command', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ command })
-                });
+			const command = input.trim();
+			if (!command) return;
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+			setHistory(prev => {
+				const newHistory = [...prev, command];
+				return newHistory.slice(-100);
+			});
+			setHistoryIndex(-1);
+			setInput('');
 
-                const data = await response.json();
+			try {
+				const response = await fetch('http://localhost:8080/api/command', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					credentials: 'include',
+					body: JSON.stringify({ command })
+				});
 
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                    return;
-                }
+				const data = await response.json();
 
-                setCommands(prev => [...prev, {
-                    input: command,
-                    output: data.result,
-                    error: data.error,
-                    timestamp: new Date().toISOString()
-                }]);
-            } catch (error) {
-                setCommands(prev => [...prev, {
-                    input: command,
-                    output: null,
-                    error: error.message || 'An error occurred while processing the command',
-                    timestamp: new Date().toISOString()
-                }]);
-            }
+				setCommands(prev => [...prev, {
+					input: command,
+					output: data.result,
+					error: !data.success,
+					timestamp: new Date().toISOString()
+				}]);
+
+			} catch (err) {
+				setCommands(prev => [...prev, {
+					input: command,
+					output: `Connection error: Could not reach server`,
+					error: true,
+					timestamp: new Date().toISOString()
+				}]);
+			}
         } else if (keystrokeEnterInput.key === 'ArrowUp') {
             keystrokeEnterInput.preventDefault();
             setHistoryIndex(prev => {
@@ -131,19 +125,15 @@ const Terminal = () => {
     return (
         <div className="terminal-container">
             <div ref={terminalRef} className="terminal-output">
-                {commands.map((cmd, idx) => (
-                    <div key={idx} className="command-line">
-                      	<span className="prompt">[{userData?.userName || unauthenticatedClientName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>
-                        <span className="command">{cmd.input}</span>
-                        {(cmd.error) ? (
-                            <div className="error">{cmd.error}</div>
-                        ) : cmd.output ? (
-                            <div className="output">
-                                {typeof cmd.output === 'string' ? cmd.output : cmd.output}
-                            </div>
-                        ) : null}
-                    </div>
-                ))}
+			{commands.map((cmd, idx) => (
+				<div key={idx} className="command-line">
+					<span className="prompt">[{userData?.userName || unauthenticatedClientName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>
+					<span className="command">{cmd.input}</span>
+					<span className="output">
+						{cmd.output}
+					</span>
+				</div>
+			))}
             </div>
             <div className="input-line">
 			<span className="prompt">[{userData?.userName || unauthenticatedClientName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>

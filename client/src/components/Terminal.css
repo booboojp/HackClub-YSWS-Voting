@@ -43,16 +43,11 @@
 
 .output {
     color: #B8C0E0;
-    margin-left: 20px;
+    margin-left: 3.5px;
     white-space: pre-wrap;
     width: 100%;
 }
 
-.error {
-    color: #FF5555;
-    margin-left: 20px;
-    width: 100%;
-}
 
 .input-line {
     display: flex;

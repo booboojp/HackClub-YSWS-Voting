@@ -6,110 +6,60 @@ class YSWSCommand extends Command {
 		super({
 			name: `ysws`,
 			aliases: [`project`, `p`],
-			params: [`action`],
 			requiresAuth: true,
-			description: `Manage YSWS projects. Actions: create, search, list`
+			description: `Manage YSWS projects`
 		});
-	}
 
-	async beforeExecute(req) {
-		console.log('RUNNING BEFORE EXEC!!!')
-		this.pb = pbClient.getInstance();
-		if (!this.pb.authStore.isValid) {
-			throw new Error(`Not authenticated with PocketBase`);
-		}
+		this.pb = pbClient;
 
-		try {
-			await this.pb.collections.getOne(`ysws`);
-		} catch (error) {
-			if (error.status === 404) {
-				await this.pb.collections.create({
-					name: `ysws`,
-					type: `base`,
-					schema: [
-						{
-							name: `title`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `description`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `tags`,
-							type: `json`,
-							required: false
-						},
-						{
-							name: `creator`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `status`,
-							type: `text`,
-							required: true
-						},
-						{
-							name: `votes`,
-							type: `json`,
-							required: false
-						}
-					]
+		// Register create action
+		this.registerAction(`create`, {
+			params: [`title`, `description`, `tags`],
+			usage: `ysws create <title> <description> [tags...]`,
+			validate: (params) => {
+				if (params.length < 2) return `Title and description are required`;
+				if (params[0].length < 3) return `Title must be at least 3 characters`;
+				return true;
+			},
+			execute: async ([title, description, ...tags], req) => {
+				const ysws = await this.pb.collection(`ysws`).create({
+					title,
+					description,
+					tags: tags || [],
+					creator: req.session.auth.userId,
+					status: `ideation`,
+					votes: []
 				});
-			} else {
-				throw error;
+				return { success: true, result: `Created: ${ysws.id} - ${title}` };
 			}
-		}
-		await super.beforeExecute(req);
-	}
+		});
 
-	async execute(params, req) {
-		const [action, ...rest] = params;
-
-		switch (action) {
-		case `create`: {
-			if (rest.length < 2) {
-				return { success: false, result: `Usage: ysws create <title> <description> [tags...]` };
+		// Register search/list action
+		this.registerAction(`search`, {
+			params: [`tag`],
+			usage: `ysws search [tag]`,
+			execute: async ([tag], req) => {
+				const results = await this.pb.collection(`ysws`).getList(1, 10, {
+					filter: tag ? `tags ~ "${tag}"` : ``,
+					sort: `-created`
+				});
+				return { success: true, result: results };
 			}
+		});
 
-			const [title, description, ...tags] = rest;
-			const ysws = await this.pb.collection(`ysws`).create({
-				title,
-				description,
-				tags: tags || [],
-				creator: req.session.auth.userId,
-				status: `ideation`,
-				votes: []
-			});
-
-			return { success: true, result: `Created: ${ysws.id} - ${title}` };
-		}
-
-		case `search`:
-		case `list`: {
-			const [tag] = rest;
-			const results = await this.pb.collection(`ysws`).getList(1, 10, {
-				filter: tag ? `tags ~ "${tag}"` : ``,
-				sort: `-created`
-			});
-
-			if (!results.items.length) {
-				return { success: true, result: `No projects found` };
+		// Set list as alias for search
+		this.registerAction(`list`, {
+			params: [`tag`],
+			usage: `ysws list [tag]`,
+			execute: async (params, req) => {
+				const searchAction = this.actions.get(`search`);
+				return searchAction.execute(params, req);
 			}
+		});
 
-			const output = results.items
-				.map(y => `${y.id}: ${y.title} [${y.votes?.length || 0}⭐]`)
-				.join(`\n`);
-
-			return { success: true, result: output };
-		}
-
-		default:
-			return { success: false, result: `Unknown action: ${action}` };
-		}
+		// Set default action
+		this.setDefaultAction(`list`);
 	}
 }
+
 module.exports = YSWSCommand;
