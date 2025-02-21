@@ -16,13 +16,10 @@ const Terminal = () => {
     const [interactivePrompt, setInteractivePrompt] = useState(null);
 
 
-    // Terminal display constants
     const unauthenticatedClientName = `Anonymous`;
     const mockLinuxDistributionName = `Arf Linux`;
     const mockLinuxDistributionNameShortHand_Upper = `Arf`;
     const mockLinuxDistributionNameShortHand_Lower = `arf`;
-
-    // Display welcome message on first load or auth change
     useEffect(() => {
         if (!commands.length && authSession) {
             const welcomeMessage = {
@@ -90,11 +87,12 @@ const Terminal = () => {
 
 			const data = await response.json();
 
-			setCommands(prev => [...prev, {
-				input: command,
-				isInteractive: !!interactionId,
-				timestamp: new Date().toISOString()
-			}]);
+			if (!interactionId) {
+				setCommands(prev => [...prev, {
+					input: command,
+					timestamp: new Date().toISOString()
+				}]);
+			}
 
 			if (data.error) {
 				setCommands(prev => [...prev, {
@@ -109,19 +107,21 @@ const Terminal = () => {
 			if (data.awaitingInput) {
 				setInteractionId(data.interactionId || interactionId);
 				setInteractivePrompt(data.prompt);
-
 				setCommands(prev => [...prev, {
 					isPrompt: true,
 					output: data.prompt,
+					inputValue: command,
 					timestamp: new Date().toISOString()
 				}]);
 			} else {
 				setInteractionId(null);
 				setInteractivePrompt(null);
-				setCommands(prev => [...prev, {
-					output: data.result?.message || data.result,
-					timestamp: new Date().toISOString()
-				}]);
+				if (data.result) {
+					setCommands(prev => [...prev, {
+						output: data.result?.message || data.result,
+						timestamp: new Date().toISOString()
+					}]);
+				}
 			}
 		} catch (error) {
 			console.error(`Command error:`, error);
@@ -139,21 +139,24 @@ const Terminal = () => {
     return (
         <div className="terminal-container">
             <div ref={terminalRef} className="terminal-output">
-                {commands.map((cmd, idx) => (
-                    <div key={idx} className="command-line">
-                        {!cmd.isPrompt && (
-                            <span className="prompt">
-                                [{userName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$
-                            </span>
-                        )}
-                        {cmd.input && <span className="command">{cmd.input}</span>}
-                        {cmd.error ? (
-                            <div className="error">{cmd.error}</div>
-                        ) : cmd.output ? (
-                            <div className="output">{cmd.output}</div>
-                        ) : null}
-                    </div>
-                ))}
+			{commands.map((cmd, idx) => (
+				<div key={idx} className="command-line">
+					{!cmd.isPrompt ? (
+						<>
+							<span className="prompt">
+								[{userName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$
+							</span>
+							<span className="command">{cmd.input}</span>
+						</>
+					) : (
+						<div className="output">
+							{cmd.output}{cmd.inputValue ? ` ${cmd.inputValue}` : ``}
+						</div>
+					)}
+					{cmd.error && <div className="error">{cmd.error}</div>}
+					{cmd.output && !cmd.isPrompt && <div className="output">{cmd.output}</div>}
+				</div>
+			))}
             </div>
             <div className="input-line">
                 <span className="prompt">
