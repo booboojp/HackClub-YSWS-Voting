@@ -8,6 +8,7 @@ class Command {
         this.requiresAuth = options.requiresAuth !== undefined ? options.requiresAuth : true;
         this.description = options.description || `No description provided`;
         this.isInteractive = options.isInteractive || false;
+        this.isInteractiveCase = options.isInteractiveCase || false;
         this.interactionTimeout = options.interactionTimeout || 300000; 
         this.interactiveState = null;
     }
