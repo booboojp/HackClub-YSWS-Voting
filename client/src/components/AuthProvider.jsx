@@ -11,15 +11,12 @@ export const AuthProvider = ({ children }) => {
     });
 
     useEffect(() => {
-        // Get initial session
         supabase.auth.getSession().then(({ data: { session }, error }) => {
             setAuth({ session, loading: false, error });
             if (session) {
                 console.log('Session found:', session);
             }
         });
-
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event, session) => {
                 setAuth({ session, loading: false, error: null });
