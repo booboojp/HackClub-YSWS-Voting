@@ -5,7 +5,18 @@ const { validateParams } = require(`./utils/commandParser.js`);
 class CommandExecutor {
     constructor() {
         this.commands = new Map();
+        this.activeInteractions = new Map();
         this.loadCommands();
+        setInterval(this.cleanupStaleInteractions.bind(this), 60000);
+    }
+
+    cleanupStaleInteractions() {
+        const now = Date.now();
+        for (const [id, interaction] of this.activeInteractions) {
+            if (now - interaction.startTime > interaction.command.interactionTimeout) {
+                this.activeInteractions.delete(id);
+            }
+        }
     }
 
     loadCommands() {
@@ -25,12 +36,36 @@ class CommandExecutor {
                 console.error(`[CommandExecutor] Failed to load ${file}:`, error.message);
             }
         });
-        console.log(`[CommandExecutor] Loaded ${this.getCommands().length} commands`);
     }
 
-    async execute(command, params, req) {
+    async execute(command, params, req, interactionId = null) {
+        if (interactionId && this.activeInteractions.has(interactionId)) {
+            const interaction = this.activeInteractions.get(interactionId);
+            const result = await interaction.command.handleInteractiveInput(command, req);
+
+            if (!result.awaitingInput) {
+                this.activeInteractions.delete(interactionId);
+            }
+
+            return result;
+        }
+
         const cmd = this.commands.get(command.toLowerCase());
         if (!cmd) throw new Error(`Unknown command: ${command}`);
+
+        if (cmd.isInteractive) {
+            const interactionId = Date.now().toString();
+            const result = await cmd.startInteractiveMode(req);
+
+            if (result.awaitingInput) {
+                this.activeInteractions.set(interactionId, {
+                    command: cmd,
+                    startTime: Date.now()
+                });
+                return { ...result, interactionId };
+            }
+        }
+
         const validation = validateParams(command, cmd.params, params);
         if (!validation.valid) throw new Error(validation.error);
         await cmd.beforeExecute(req);

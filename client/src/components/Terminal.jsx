@@ -12,6 +12,9 @@ const Terminal = () => {
     const [commands, setCommands] = useState([]);
     const [currentPath, setCurrentPath] = useState(`~`);
     const terminalRef = useRef(null);
+    const [interactionId, setInteractionId] = useState(null);
+    const [interactivePrompt, setInteractivePrompt] = useState(null);
+
 
     // Terminal display constants
     const unauthenticatedClientName = `Anonymous`;
@@ -41,7 +44,6 @@ const Terminal = () => {
         }
     }, [authSession, commands.length]);
 
-    // Auto-scroll to bottom when commands update
     useEffect(() => {
         terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }, [commands]);
@@ -50,43 +52,10 @@ const Terminal = () => {
         if (keystrokeEnterInput.key === `Enter`) {
             const command = input.trim();
             if (!command) return;
-
-            try {
-                const response = await fetch(`http://localhost:8080/api/command`, {
-                    method: `POST`,
-                    headers: {
-                        'Content-Type': `application/json`,
-                        ...(authSession?.access_token && {
-                            'Authorization': `Bearer ${authSession.access_token}`
-                        })
-                    },
-                    body: JSON.stringify({ command })
-                });
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                    return;
-                }
-
-                setCommands(prev => [...prev, {
-                    input: command,
-                    output: data.result,
-                    error: data.error,
-                    timestamp: new Date().toISOString()
-                }]);
-                setInput(``);
-                setHistory(prev => [...prev, command]);
-                setHistoryIndex(-1);
-            } catch (error) {
-                setCommands(prev => [...prev, {
-                    input: command,
-                    error: error.message,
-                    timestamp: new Date().toISOString()
-                }]);
-            }
+            await handleCommand(command);
+            setInput(``);
+            setHistory(prev => [...prev, command]);
+            setHistoryIndex(-1);
         } else if (keystrokeEnterInput.key === `ArrowUp`) {
             keystrokeEnterInput.preventDefault();
             setHistoryIndex(prev => {
@@ -103,6 +72,67 @@ const Terminal = () => {
             });
         }
     };
+	const handleCommand = async (command) => {
+		try {
+			const response = await fetch(`http://localhost:8080/api/command`, {
+				method: `POST`,
+				headers: {
+					'Content-Type': `application/json`,
+					...(authSession?.access_token && {
+						'Authorization': `Bearer ${authSession.access_token}`
+					})
+				},
+				body: JSON.stringify({
+					command,
+					interactionId
+				})
+			});
+
+			const data = await response.json();
+
+			setCommands(prev => [...prev, {
+				input: command,
+				isInteractive: !!interactionId,
+				timestamp: new Date().toISOString()
+			}]);
+
+			if (data.error) {
+				setCommands(prev => [...prev, {
+					error: data.error,
+					timestamp: new Date().toISOString()
+				}]);
+				setInteractionId(null);
+				setInteractivePrompt(null);
+				return;
+			}
+
+			if (data.awaitingInput) {
+				setInteractionId(data.interactionId || interactionId);
+				setInteractivePrompt(data.prompt);
+
+				setCommands(prev => [...prev, {
+					isPrompt: true,
+					output: data.prompt,
+					timestamp: new Date().toISOString()
+				}]);
+			} else {
+				setInteractionId(null);
+				setInteractivePrompt(null);
+				setCommands(prev => [...prev, {
+					output: data.result?.message || data.result,
+					timestamp: new Date().toISOString()
+				}]);
+			}
+		} catch (error) {
+			console.error(`Command error:`, error);
+			setCommands(prev => [...prev, {
+				error: error.message,
+				timestamp: new Date().toISOString()
+			}]);
+			setInteractionId(null);
+			setInteractivePrompt(null);
+		}
+	};
 
     const userName = authSession?.user?.user_metadata?.name || unauthenticatedClientName;
 
@@ -111,25 +141,29 @@ const Terminal = () => {
             <div ref={terminalRef} className="terminal-output">
                 {commands.map((cmd, idx) => (
                     <div key={idx} className="command-line">
-                        <span className="prompt">[{userName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>
-                        <span className="command">{cmd.input}</span>
+                        {!cmd.isPrompt && (
+                            <span className="prompt">
+                                [{userName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$
+                            </span>
+                        )}
+                        {cmd.input && <span className="command">{cmd.input}</span>}
                         {cmd.error ? (
                             <div className="error">{cmd.error}</div>
                         ) : cmd.output ? (
-                            <div className="output">
-                                {typeof cmd.output === `string` ? cmd.output : cmd.output}
-                            </div>
+                            <div className="output">{cmd.output}</div>
                         ) : null}
                     </div>
                 ))}
             </div>
             <div className="input-line">
-                <span className="prompt">[{userName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$</span>
+                <span className="prompt">
+                    [{userName}@{mockLinuxDistributionNameShortHand_Lower} {currentPath}]$
+                </span>
                 <input
                     value={input}
-                    onChange={(keystrokeInput) => setInput(keystrokeInput.target.value)}
+                    onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder="Enter command..."
+                    placeholder={interactivePrompt || "Enter command..."}
                     autoFocus
                 />
             </div>

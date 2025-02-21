@@ -22,21 +22,20 @@ global.commandExecutor = commandExecutor;
 
 app.post(`/api/command`, async (req, res) => {
     try {
-        const { command } = req.body;
+        const { command, interactionId } = req.body;
         if (!command) return res.status(400).json({ error: `No command provided` });
+
         const [cmdName, ...params] = command.split(` `);
-        const result = await commandExecutor.execute(cmdName, params, req);
+        const result = await commandExecutor.execute(cmdName, params, req, interactionId);
         res.json(result);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 });
-
 app.get(`/auth/callback`, (req, res) => {
     const next = req.query.next || `/`;
     res.redirect(303, `/${next.slice(1)}`);
 });
-
 app.post(`/auth/logout`, async (req, res) => {
     const { error } = await supabase.auth.signOut();
     if (error) return res.status(500).json({ error: error.message });
