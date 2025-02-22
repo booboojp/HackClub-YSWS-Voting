@@ -15,10 +15,9 @@ class LoginCommand extends Command {
     async execute(params, req) {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: `slack_oidc`,
-            options: { redirectTo: process.env.SLACK_REDIRECT_URI }
+            options: { redirectTo: process.env.SLACK_REDIRECT_URL }
         });
         if (error) throw error;
-		if (!data)
         return {
             success: true,
             result: `Redirecting to Slack login...`,

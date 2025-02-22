@@ -106,6 +106,11 @@ const Terminal = () => {
 				return;
 			}
 
+            if (data.redirect) {
+                window.location.href = data.redirect;
+                return;
+            }
+
 			if (data.awaitingInput) {
 				setInteractionId(data.interactionId || interactionId);
 				setInteractivePrompt(data.prompt);

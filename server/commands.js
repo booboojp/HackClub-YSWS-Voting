@@ -53,7 +53,7 @@ class CommandExecutor {
         const cmd = this.commands.get(command.toLowerCase());
         if (!cmd) throw new Error(`Unknown command: ${command}`);
 
-        if (cmd.isInteractive) {
+        if (cmd.isInteractive && !cmd.isInteractiveCase) {
             const interactionId = Date.now().toString();
             const result = await cmd.startInteractiveMode(req);
 
@@ -64,6 +64,31 @@ class CommandExecutor {
                 });
                 return { ...result, interactionId };
             }
+        } else if (cmd.isInteractive && cmd.isInteractiveCase && !interactionId) {
+            await cmd.beforeExecute(req);
+            const result = await cmd.execute(params, req);
+            await cmd.afterExecute(true);
+            
+            if (result.interactive) {
+                const interactionId = Date.now().toString();
+                this.activeInteractions.set(interactionId, {
+                    command: cmd,
+                    startTime: Date.now()
+                });
+                return { ...result, interactionId };
+            }
+
+        } else if (cmd.isInteractive && cmd.isInteractiveCase && interactionId) {
+            const interaction = this.activeInteractions.get(interactionId);
+            if (!interaction) throw new Error(`Invalid interaction ID`);
+
+            const result = await interaction.command.handleInteractiveInput(command, req);
+
+            if (!result.awaitingInput) {
+                this.activeInteractions.delete(interactionId);
+            }
+
+            return result;
         }
 
         const validation = validateParams(command, cmd.params, params);
