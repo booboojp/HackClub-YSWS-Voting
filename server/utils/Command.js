@@ -8,12 +8,12 @@ class Command {
         this.requiresAuth = options.requiresAuth !== undefined ? options.requiresAuth : true;
         this.description = options.description || `No description provided`;
         this.isInteractive = options.isInteractive || false;
-        this.interactionTimeout = options.interactionTimeout || 300000; 
+        this.interactionTimeout = options.interactionTimeout || 300000;
         this.interactiveState = null;
     }
 
     async handleInteractiveInput(input, req) {
-        throw new Error(`Interactive commands must implement handleInteractiveInput`);
+        throw new Error(`Interactive commans must impledment handleInteractiveInput`);
     }
 
     async startInteractiveMode(req) {
